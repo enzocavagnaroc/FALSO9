@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>FALSO 9 - Superliga Arcade</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bronce: #cd7f32; --plata: #c0c0c0; --oro: #ffd700; --diamante: #b9f2ff;
+            --arcade-red: #ff0000;
+            --bg-bsc: #f1c40f; --bg-cse: #2980b9; --bg-ldu: #ecf0f1; --bg-idv: #1a1a1a;
+        }
+        
+        body { background: #000; color: #fff; font-family: 'Press Start 2P', cursive; margin: 0; overflow: hidden; height: 100vh; }
+
+        /* --- UI & MENUS --- */
+        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: #000; z-index: 100; }
+        #main-menu { display: flex; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); }
+        .main-title { font-size: 45px; text-shadow: 4px 4px var(--arcade-red); margin-bottom: 30px; text-align: center; line-height: 1.2; }
+        .menu-btn { background: #222; border: 4px solid #fff; color: white; font-family: 'Press Start 2P'; padding: 15px; cursor: pointer; width: 380px; margin: 5px; font-size: 10px; }
+        .menu-btn:hover { background: var(--arcade-red); }
+
+        /* --- MARCADOR STADIUM --- */
+        #scoreboard { 
+            position: absolute; left: 20px; top: 50%; transform: translateY(-50%); 
+            background: #050505; border: 6px solid #333; padding: 20px; 
+            box-shadow: 0 0 20px rgba(255,0,0,0.3);
+        }
+        .score-val { 
+            font-size: 35px; color: var(--arcade-red); 
+            text-shadow: 0 0 8px #f00; letter-spacing: 5px; 
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.8) 3px);
+        }
+
+        /* --- ÁLBUM --- */
+        .grid-album { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 20px; overflow-y: auto; max-height: 70vh; width: 90%; }
+        .team-selector { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+
+        /* --- NARRADOR --- */
+        #battle-log {
+            position: absolute; top: 20px; width: 70%; left: 15%;
+            background: rgba(0,0,0,0.95); border: 4px double #fff; padding: 15px;
+            font-size: 10px; line-height: 1.6; color: #0f0; text-align: center; z-index: 200;
+        }
+
+        #active-support-ui {
+            position: absolute; top: 130px; width: 200px; left: 20px;
+            background: #111; border: 2px solid gold; padding: 10px; font-size: 8px; text-align: center; display: none;
+        }
+
+        /* --- CARTAS --- */
+        .card { width: 155px; height: 220px; background: #111; border: 4px solid #fff; display: flex; flex-direction: column; overflow: hidden; position: relative; flex-shrink: 0; transition: 0.2s; cursor: pointer; }
+        .card:hover { transform: scale(1.05); z-index: 10; }
+        .card-img-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #222; }
+        .card-name-plate { background: #fff; color: #000; text-align: center; font-size: 6px; padding: 5px; border-block: 2px solid #000; font-weight: bold; }
+        .card-ability-zone { height: 65px; background: #2f3640; padding: 5px; font-size: 5px; line-height: 1.3; overflow: hidden; }
+        
+        .rarity-diamante { border-color: var(--diamante); box-shadow: 0 0 15px var(--diamante); }
+        .rarity-diamante::after { content:""; position:absolute; inset:-50%; background:linear-gradient(45deg,transparent,rgba(255,255,255,0.4),transparent); animation:shimmer 2s infinite; transform:rotate(45deg); pointer-events: none; }
+        @keyframes shimmer { 0% { transform:translateX(-150%) rotate(45deg); } 100% { transform:translateX(150%) rotate(45deg); } }
+
+        .is-support { border-color: #0f0; box-shadow: 0 0 10px #0f0; }
+
+        /* --- PIXEL ART --- */
+        .pixel-player { width: 70px; height: 90px; position: relative; image-rendering: pixelated; }
+        .p-head { width: 26px; height: 26px; position: absolute; left: 22px; top: 5px; border: 2px solid #000; }
+        .has-glasses::after { content: ""; position: absolute; width: 30px; height: 6px; background: rgba(0,0,0,0.85); left: -2px; top: 8px; }
+        .p-body { width: 36px; height: 40px; position: absolute; left: 17px; top: 31px; border: 2px solid #000; }
+        .p-legs { width: 36px; height: 12px; background: #333; position: absolute; left: 17px; top: 71px; border: 2px solid #000; }
+
+        #arena { width: 100%; height: 100%; background: #1e8449; display: flex; align-items: center; justify-content: center; gap: 40px; }
+        #player-hand { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="main-menu" class="screen" style="display: flex;">
+    <h1 class="main-title">FALSO 9<br><span style="font-size:12px; color:white;">EDICIÓN ECUADOR 2026</span></h1>
+    <button class="menu-btn" onclick="showScreen('game-scene'); iniciarJuego()">EMPEZAR PARTIDO</button>
+    <button class="menu-btn" onclick="showScreen('album-screen'); renderAlbum('BSC')">COLECCIÓN / ÁLBUM</button>
+    <button class="menu-btn" onclick="showScreen('options-screen')">ELEGIR MI EQUIPO</button>
+</div>
+
+<div id="album-screen" class="screen">
+    <div class="team-selector">
+        <button onclick="renderAlbum('BSC')">BSC</button>
+        <button onclick="renderAlbum('CSE')">CSE</button>
+        <button onclick="renderAlbum('LDU')">LDU</button>
+        <button onclick="renderAlbum('IDV')">IDV</button>
+        <button onclick="renderAlbum('Soportes')">SOPORTES</button>
+    </div>
+    <div id="album-grid" class="grid-album"></div>
+    <button class="menu-btn" onclick="showScreen('main-menu')">REGRESAR</button>
+</div>
+
+<div id="options-screen" class="screen">
+    <h2>TU CLUB FAVORITO</h2>
+    <div class="team-selector">
+        <button class="menu-btn" onclick="seleccionarEquipo('BSC')">BARCELONA SC</button>
+        <button class="menu-btn" onclick="seleccionarEquipo('CSE')">EMELEC</button>
+        <button class="menu-btn" onclick="seleccionarEquipo('LDU')">LDU QUITO</button>
+        <button class="menu-btn" onclick="seleccionarEquipo('IDV')">IDV</button>
+    </div>
+    <p id="equipo-actual">Seleccionado: BSC</p>
+    <button class="menu-btn" onclick="showScreen('main-menu')">GUARDAR</button>
+</div>
+
+<div id="game-scene" class="screen">
+    <div id="battle-log">BIENVENIDO AL ESTADIO.</div>
+    <div id="active-support-ui"><b>ESTRATEGIA:</b><br><span id="support-name">NINGUNA</span></div>
+    <div id="scoreboard">
+        <div style="font-size: 8px;">LOCAL</div><div id="score-p1" class="score-val">00</div>
+        <hr style="border: 1px solid #333; margin: 10px 0;">
+        <div style="font-size: 8px;">VISITA</div><div id="score-cpu" class="score-val">00</div>
+    </div>
+    <div id="arena">
+        <div id="slot-p1" style="width:155px; height:220px; border:2px dashed #fff;"></div>
+        <div style="font-size: 20px;">VS</div>
+        <div id="slot-cpu" style="width:155px; height:220px; border:2px dashed #fff;"></div>
+    </div>
+    <div id="player-hand"></div>
+</div>
+
+<script>
+const DB = {
+    BSC: { color: "var(--bg-bsc)", p: [
+        { n: "J. CONTRERAS", lvl: 7, pos: "GK", h: "Reflejos de Ídolo: +2 vs Astillero.", skin: "#ffdbac" },
+        { n: "B. CARABALÍ", lvl: 7, pos: "DEF", h: "Carrilero: Ignora defensa rival.", skin: "#8d5524" },
+        { n: "JAVIER BÁEZ", lvl: 8, pos: "DEF", h: "Muro de Acero: Reduce FWD rival -2.", skin: "#ffdbac" },
+        { n: "ALEX RANGEL", lvl: 6, pos: "DEF", h: "Anticipación: Corta pases filtrados.", skin: "#8d5524" },
+        { n: "G. VALLECILLA", lvl: 6, pos: "DEF", h: "Salida Limpia: Conecta con MID.", skin: "#8d5524" },
+        { n: "MATÍAS LUGO", lvl: 6, pos: "MID", h: "Ancla del Ídolo: Estabiliza posesión.", skin: "#ffdbac" },
+        { n: "J. QUIÑÓNEZ", lvl: 7, pos: "MID", h: "Box-to-Box: +1 ATK y +1 DEF.", skin: "#8d5524" },
+        { n: "MILTON CÉLIZ", lvl: 7, pos: "MID", h: "Visión de Juego: +20% asistencia.", skin: "#ffdbac" },
+        { n: "B. CASTILLO", lvl: 7, pos: "MID", h: "Turbina: Mejora ritmo al final.", skin: "#8d5524" },
+        { n: "H. VILLALBA", lvl: 8, pos: "FWD", h: "Extremo Letal: Desborda DEF < 7.", skin: "#ffdbac" },
+        { n: "D. BENEDETTO", lvl: 9, pos: "FWD", h: "Pipa Gol: Cancela habilidad GK.", skin: "#ffdbac", hair: "none" }
+    ]},
+    CSE: { color: "var(--bg-cse)", p: [
+        { n: "PEDRO ORTIZ", lvl: 9, pos: "GK", h: "Candado Azul: Inmune a Plata/Bronce.", skin: "#8d5524" },
+        { n: "R. CAICEDO", lvl: 7, pos: "DEF", h: "Incombustible: Energía infinita.", skin: "#8d5524" },
+        { n: "FERNANDO LEÓN", lvl: 8, pos: "DEF", h: "Capitán del Aire: Gana duelos aéreos.", skin: "#ffdbac" },
+        { n: "A. LEGUIZAMÓN", lvl: 7, pos: "DEF", h: "Líder de Zaga: +1 DEF a compañeros.", skin: "#ffdbac" },
+        { n: "I. GUERRICO", lvl: 6, pos: "DEF", h: "Guante Zurdo: Centros precisos.", skin: "#ffdbac" },
+        { n: "ANGELO MINA", lvl: 6, pos: "MID", h: "Presión Alta: Roba balones en salida.", skin: "#8d5524" },
+        { n: "G. NÁPOLI", lvl: 7, pos: "MID", h: "Orquestador: Distribuye sin errores.", skin: "#ffdbac" },
+        { n: "F. PIZZINI", lvl: 7, pos: "MID", h: "Desequilibrio: Genera faltas clave.", skin: "#ffdbac" },
+        { n: "LUIS FRAGOZO", lvl: 5, pos: "MID", h: "Promesa: +2 LVL vs Quito.", skin: "#8d5524" },
+        { n: "MILER BOLAÑOS", lvl: 8, pos: "FWD", h: "Killer del Clásico: +3 vs BSC.", skin: "#8d5524" },
+        { n: "JOSÉ NERIS", lvl: 7, pos: "FWD", h: "Tanque: Potencia imparable.", skin: "#ffdbac" }
+    ]},
+    LDU: { color: "var(--bg-ldu)", p: [
+        { n: "GONZALO VALLE", lvl: 7, pos: "GK", h: "Muralla Blanca: Experto en penales.", skin: "#ffdbac" },
+        { n: "LUIS SEGOVIA", lvl: 8, pos: "DEF", h: "Polivalente: Puede jugar como MID.", skin: "#8d5524" },
+        { n: "RICARDO ADÉ", lvl: 9, pos: "DEF", h: "La Pantera: Bloquea 50% de tiros.", skin: "#3c2e12" },
+        { n: "L. QUIÑÓNEZ", lvl: 7, pos: "DEF", h: "Cañón del Rey: Tiros libres potentes.", skin: "#8d5524" },
+        { n: "JOSÉ QUINTERO", lvl: 8, pos: "DEF", h: "Choclo Power: +1 a los FWD.", skin: "#8d5524" },
+        { n: "G. VILLAMIL", lvl: 6, pos: "MID", h: "Equilibrio: Neutraliza MID rival.", skin: "#ffdbac" },
+        { n: "JESÚS PRETELL", lvl: 7, pos: "MID", h: "Aspiradora: Recuperación garantizada.", skin: "#8d5524" },
+        { n: "ALEJO TOBAR", lvl: 7, pos: "MID", h: "Pase de la Muerte: Asistencia de gol.", skin: "#ffdbac" },
+        { n: "F. CORNEJO", lvl: 7, pos: "MID", h: "Gol Fantasma: Aparece por sorpresa.", skin: "#ffdbac" },
+        { n: "RODNEY REDES", lvl: 7, pos: "FWD", h: "Flecha Guaraní: Supera DEF < 6.", skin: "#ffdbac" },
+        { n: "DEYVERSON", lvl: 8, pos: "FWD", h: "Showman: Reduce defensa rival -1.", skin: "#ffdbac", hair: "gold" }
+    ]},
+    IDV: { color: "var(--bg-idv)", p: [
+        { n: "A. QUINTANA", lvl: 8, pos: "GK", h: "Seguridad Total: No da rebotes.", skin: "#ffdbac" },
+        { n: "JHON ESPINOZA", lvl: 7, pos: "DEF", h: "Proyección: Atacante extra en contra.", skin: "#8d5524" },
+        { n: "M. CARABAJAL", lvl: 8, pos: "DEF", h: "Fuerza Bruta: Gana choques físicos.", skin: "#ffdbac" },
+        { n: "ANDY VELASCO", lvl: 6, pos: "DEF", h: "Orden Táctico: Línea de offside.", skin: "#8d5524" },
+        { n: "G. CORTEZ", lvl: 7, pos: "DEF", h: "Lateral Volante: Resistencia en altura.", skin: "#8d5524" },
+        { n: "JHEGSON MÉNDEZ", lvl: 8, pos: "MID", h: "Metrónomo: Controla el ritmo.", skin: "#8d5524" },
+        { n: "JUSTIN LERMA", lvl: 7, pos: "MID", h: "Joyita: Sube +1 cada 10 min.", skin: "#8d5524" },
+        { n: "RONALD BRIONES", lvl: 6, pos: "MID", h: "Pulmón: Cubre espacios vacíos.", skin: "#8d5524" },
+        { n: "MATÍAS PERELLÓ", lvl: 7, pos: "FWD", h: "Factor X: Confunde al marcador.", skin: "#ffdbac" },
+        { n: "C. GONZÁLEZ", lvl: 7, pos: "FWD", h: "Cazador: Marca en el área chica.", skin: "#ffdbac" },
+        { n: "EMERSON PATA", lvl: 6, pos: "FWD", h: "Regate Explosivo: Deja atrás al rival.", skin: "#8d5524" }
+    ]},
+    Soportes: [
+        { n: "ARIEL HOLAN", t: "ENT", h: "Táctica BSC: +1 LVL a delanteros.", glass: true, skin: "#ffdbac", color: "#444" },
+        { n: "VITAMINA S.", t: "ENT", h: "Presión LDU: -1 LVL defensa rival.", glass: true, skin: "#ffdbac", color: "#444" },
+        { n: "LEONEL ÁLVAREZ", t: "ENT", h: "Garra: Refuerza el mediocampo.", glass: true, skin: "#ffdbac", color: "#444" }
+    ]
+};
+
+let game = { p1S: 0, cpuS: 0, mano: [], mazo: [], equipo: 'BSC', soporte: null };
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+    document.getElementById(id).style.display = 'flex';
+}
+
+function seleccionarEquipo(eq) {
+    game.equipo = eq;
+    document.getElementById('equipo-actual').innerText = "Seleccionado: " + eq;
+}
+
+function renderAlbum(eq) {
+    const grid = document.getElementById('album-grid'); grid.innerHTML = "";
+    const items = (eq === 'Soportes') ? DB.Soportes : DB[eq].p;
+    const color = (eq === 'Soportes') ? "#444" : DB[eq].color;
+    items.forEach(p => {
+        const div = document.createElement('div');
+        div.innerHTML = createCardHTML({...p, teamColor: color, type: p.t || p.pos});
+        grid.appendChild(div);
+    });
+}
+
+function iniciarJuego() {
+    game.p1S = 0; game.cpuS = 0; game.soporte = null;
+    document.getElementById('active-support-ui').style.display = 'none';
+    actualizarMarcador();
+    game.mazo = DB[game.equipo].p.map(p => ({...p, teamColor: DB[game.equipo].color, type: 'PLAYER'}));
+    DB.Soportes.forEach(s => game.mazo.push({...s, teamColor: s.color, type: 'ENT'}));
+    game.mazo.sort(() => Math.random() - 0.5);
+    game.mano = []; for(let i=0; i<5; i++) robar();
+    renderMano();
+}
+
+function robar() { if(game.mazo.length > 0 && game.mano.length < 6) game.mano.push(game.mazo.pop()); }
+
+function createCardHTML(c) {
+    const rarity = (c.lvl >= 8) ? 'rarity-diamante' : '';
+    const glass = c.glass ? 'has-glasses' : '';
+    const isSupport = (c.type === 'ENT') ? 'is-support' : '';
+    return `
+        <div class="card ${rarity} ${isSupport}">
+            <div class="card-top"><span>${c.lvl || ''}</span><span>${c.pos || c.type}</span></div>
+            <div class="card-img-container">
+                <div class="pixel-player">
+                    <div class="p-head ${glass}" style="background:${c.skin}; box-shadow: 0 -4px 0 ${c.hair || '#000'}"></div>
+                    <div class="p-body" style="background:${c.teamColor}"></div>
+                    <div class="p-legs"></div>
+                </div>
+            </div>
+            <div class="card-name-plate">${c.n}</div>
+            <div class="card-ability-zone"><b>HAB:</b> ${c.h}</div>
+        </div>`;
+}
+
+function renderMano() {
+    const hand = document.getElementById('player-hand'); hand.innerHTML = "";
+    game.mano.forEach((c, i) => {
+        const div = document.createElement('div');
+        div.innerHTML = createCardHTML(c);
+        div.onclick = () => procesarClick(i);
+        hand.appendChild(div);
+    });
+}
+
+function procesarClick(idx) {
+    const c = game.mano[idx];
+    if (c.type === 'ENT') {
+        game.soporte = c;
+        document.getElementById('support-name').innerText = c.n;
+        document.getElementById('active-support-ui').style.display = 'block';
+        document.getElementById('battle-log').innerText = `¡${c.n} lanza una orden táctica!`;
+        game.mano.splice(idx, 1);
+        renderMano();
+    } else {
+        jugarDuelo(idx);
+    }
+}
+
+function jugarDuelo(idx) {
+    const p1 = game.mano[idx];
+    document.getElementById('slot-p1').innerHTML = createCardHTML(p1);
+    game.mano.splice(idx, 1);
+    
+    const pools = ['BSC', 'CSE', 'LDU', 'IDV'];
+    const rT = pools[Math.floor(Math.random()*4)];
+    const cpuRaw = DB[rT].p[Math.floor(Math.random()*DB[rT].p.length)];
+    const cpu = {...cpuRaw, teamColor: DB[rT].color};
+    
+    setTimeout(() => {
+        document.getElementById('slot-cpu').innerHTML = createCardHTML(cpu);
+        let p1L = p1.lvl || 0;
+        if(game.soporte) { p1L += 1; }
+
+        if(p1L >= cpu.lvl) {
+            game.p1S++;
+            document.getElementById('battle-log').innerText = `¡GOL! ${p1.n} vence a ${cpu.n}.`;
+        } else {
+            game.cpuS++;
+            document.getElementById('battle-log').innerText = `¡FALLO! ${cpu.n} de ${rT} bloquea el ataque.`;
+        }
+        
+        actualizarMarcador();
+        game.soporte = null;
+        document.getElementById('active-support-ui').style.display = 'none';
+
+        if(game.p1S >= 3 || game.cpuS >= 3 || game.mano.length === 0) {
+            setTimeout(() => { alert("FIN DEL PARTIDO"); showScreen('main-menu'); }, 1500);
+        } else {
+            setTimeout(() => {
+                robar(); renderMano();
+                document.getElementById('slot-p1').innerHTML = "";
+                document.getElementById('slot-cpu').innerHTML = "";
+            }, 1800);
+        }
+    }, 600);
+}
+
+function actualizarMarcador() {
+    document.getElementById('score-p1').innerText = game.p1S.toString().padStart(2, '0');
+    document.getElementById('score-cpu').innerText = game.cpuS.toString().padStart(2, '0');
+}
+</script>
+</body>
+</html>
